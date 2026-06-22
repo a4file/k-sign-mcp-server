@@ -1,9 +1,14 @@
 # K-Sign MCP Server
 
-한국수어(KSL) 공공데이터를 AI가 활용할 수 있도록 제공하는 **Model Context Protocol(MCP) 서버**입니다.  
-Claude Desktop, ChatGPT MCP Client, [카카오 PlayMCP](https://playmcp.kakao.com) 등 MCP 환경에서 사용할 수 있습니다.
+| | |
+|---|---|
+| **서버 이름** | `ksign` (표시명: K-Sign) |
+| **설명** | 국립국어원 공공 수어 데이터(3만 건+)를 검색·조회하는 한국수어(KSL) MCP 서버. 수어 단어, 수형 설명, 이미지·영상 URL을 AI에게 제공합니다. |
+| **Git** | https://github.com/a4file/k-sign-mcp-server |
+| **MCP Endpoint** | `https://k-sign-mcp-server.playmcp-endpoint.kakaocloud.io/mcp` |
+| **인증** | 없음 |
 
-**저장소:** https://github.com/a4file/k-sign-mcp-server
+Claude Desktop, ChatGPT MCP Client, [카카오 PlayMCP](https://playmcp.kakao.com) 등 MCP 클라이언트에서 사용할 수 있습니다.
 
 ## 기능
 
@@ -139,7 +144,13 @@ npm run db:setup      # migrate + collect
 
 ## PlayMCP in KC 배포
 
-1. GitHub `a4file/k-sign-mcp-server` 연결 후 배포
+| 항목 | 값 |
+|------|-----|
+| MCP 식별자 | `ksign` |
+| Git 저장소 | https://github.com/a4file/k-sign-mcp-server |
+| Active Endpoint | https://k-sign-mcp-server.playmcp-endpoint.kakaocloud.io/mcp |
+
+1. GitHub 저장소 연결 후 배포
 2. 환경변수 예시:
 
 ```env
@@ -152,7 +163,7 @@ DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE=...
 COLLECT_ON_START=true
 ```
 
-3. PlayMCP 콘솔에 MCP Endpoint 등록: `https://<서비스명>.playmcp-endpoint.kakaocloud.io/mcp`
+3. [PlayMCP 콘솔](https://playmcp.kakao.com/console)에서 위 Endpoint로 등록
 
 ## Docker
 

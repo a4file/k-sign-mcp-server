@@ -27,11 +27,22 @@ function buildIpFallbackUrl(url: URL, ipFallback: string): URL {
   return ipUrl;
 }
 
+function toUrl(input: string | Request | URL): URL {
+  if (input instanceof URL) {
+    return input;
+  }
+  if (input instanceof Request) {
+    return new URL(input.url);
+  }
+  return new URL(input);
+}
+
 export async function kcisaFetch(
-  url: URL,
+  input: string | Request | URL,
   init?: RequestInit,
-  ipFallback = process.env.KCISA_API_IP_FALLBACK ?? DEFAULT_KCISA_IP,
 ): Promise<Response> {
+  const url = toUrl(input);
+  const ipFallback = process.env.KCISA_API_IP_FALLBACK ?? DEFAULT_KCISA_IP;
   const requestInit: RequestInit = {
     ...init,
     redirect: 'manual',
