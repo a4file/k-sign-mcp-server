@@ -1,0 +1,7 @@
+#!/bin/sh
+# Strip AI co-author trailers so commits stay under the a4file GitHub identity.
+COMMIT_MSG_FILE=$1
+
+tmp=$(mktemp)
+grep -viE '^Co-authored-by:.*(cursor|a4file-ai|cursoragent|copilot)' "$COMMIT_MSG_FILE" >"$tmp" || true
+mv "$tmp" "$COMMIT_MSG_FILE"

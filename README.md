@@ -1,31 +1,49 @@
 # K-Sign MCP Server
 
 한국수어(KSL) 공공데이터를 AI가 활용할 수 있도록 제공하는 **Model Context Protocol(MCP) 서버**입니다.  
-Claude Desktop, ChatGPT MCP Client, 카카오 Play MCP 등 다양한 MCP 환경에서 사용할 수 있습니다.
+Claude Desktop, ChatGPT MCP Client, [카카오 PlayMCP](https://playmcp.kakao.com) 등 MCP 환경에서 사용할 수 있습니다.
 
-## Phase 1 기능
+**저장소:** https://github.com/a4file/k-sign-mcp-server
+
+## 기능
 
 | Tool | 설명 |
 |------|------|
-| `search_sign` | 한국어 키워드로 수어 검색 |
-| `get_sign_detail` | 수어 ID로 상세 정보 조회 |
+| `search_sign` | 한국어 키워드로 수어 검색 (FTS5 + LIKE 폴백) |
+| `get_sign_detail` | 수어 ID로 상세 정보·이미지·영상 URL 조회 |
+
+### 데이터 소스 (Phase 2)
+
+국립국어원 KCISA Open API에서 **실제** `sldict.korean.go.kr` 미디어 URL을 수집합니다.
+
+| 데이터셋 | API | 약 件수 |
+|----------|-----|--------|
+| 일상생활 수어 | `getCTE01701` | ~7,500 |
+| 전문용어 수어 | `getCTE01702` | ~10,000 |
+| 문화정보 수어 | `getCTE01703` | ~1,200 |
+| 통합 수어정보 | `API_CNV_054` | ~19,000 |
+
+> API마다 **인증키가 다를 수 있습니다.** 아래 [공공데이터 수집](#공공데이터-수집) 참고.
 
 ## 아키텍처
 
-Clean Architecture + DDD 구조를 따릅니다.
+Clean Architecture + DDD
 
 ```
 src/
-├── domain/           # 엔티티, Repository 인터페이스, 도메인 에러
-├── application/      # Use Case, DTO
-├── infrastructure/   # SQLite/PostgreSQL, DI, Transport, Logger
-├── interfaces/       # MCP Tool 어댑터
-└── config/           # 환경변수 설정
+├── domain/sign/              # SignTerm, Repository, errors
+├── application/sign/         # SearchSign, GetSignDetail UseCase
+├── infrastructure/
+│   ├── persistence/sqlite/   # SQLite + FTS5
+│   ├── collectors/culture-sign/  # KCISA API 수집기
+│   ├── transport/            # stdio / HTTP (Fastify)
+│   └── di/
+├── interfaces/mcp/           # MCP tool adapters
+└── config/env.ts
 ```
 
-- **Repository Pattern**: `SignTermRepository` 인터페이스로 DB 구현체를 교체 가능 (SQLite → PostgreSQL)
-- **MCP SDK v2**: `@modelcontextprotocol/server` 2.0.0-alpha.2
-- **Full-Text Search**: SQLite FTS5 기반 검색 (LIKE 폴백 포함)
+- **MCP SDK:** `@modelcontextprotocol/server` 2.0.0-alpha.2
+- **DB:** SQLite (기본) → PostgreSQL 교체 가능 (`SignTermRepository` 인터페이스)
 
 ## 요구 사항
 
@@ -34,100 +52,116 @@ src/
 
 ## 빠른 시작
 
-### 1. 설치
-
 ```bash
 npm install
 cp .env.example .env
+npm run db:setup      # migrate + 공공 API 수집 (키 필요)
+npm run dev           # stdio MCP
 ```
 
-### 2. DB 마이그레이션 및 시드
+HTTP 모드 (배포/PlayMCP):
 
 ```bash
-npm run db:migrate
-```
-
-### 3. 개발 실행
-
-```bash
-# stdio (Claude Desktop 등 로컬 MCP 클라이언트)
-npm run dev
-
-# HTTP (원격 배포)
 MCP_TRANSPORT=http npm run dev
+# Health: GET http://localhost:8000/health
+# MCP:    POST http://localhost:8000/mcp
 ```
 
-### 4. 빌드 및 프로덕션 실행
+프로덕션:
 
 ```bash
-npm run build
-npm start
+npm run build && npm start
 ```
 
 ## 환경 변수
 
+### 서버
+
 | 변수 | 기본값 | 설명 |
 |------|--------|------|
-| `MCP_TRANSPORT` | `stdio` | `stdio` 또는 `http` |
+| `MCP_TRANSPORT` | `stdio` | `stdio` \| `http` |
 | `MCP_SERVER_NAME` | `k-sign-mcp-server` | MCP 서버 이름 |
-| `MCP_SERVER_VERSION` | `0.1.0` | MCP 서버 버전 |
 | `HTTP_HOST` | `0.0.0.0` | HTTP 바인드 호스트 |
-| `HTTP_PORT` | `3000` | HTTP 포트 |
-| `DB_PROVIDER` | `sqlite` | `sqlite` 또는 `postgres` |
-| `SQLITE_PATH` | `./data/ksign.db` | SQLite DB 경로 |
-| `POSTGRES_URL` | — | PostgreSQL 연결 URL (postgres 사용 시 필수) |
-| `SEARCH_RESULT_LIMIT` | `20` | 검색 결과 최대 개수 |
-| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
+| `HTTP_PORT` / `PORT` | `8000` | HTTP 포트 (KC는 `PORT` 우선) |
+| `DB_PROVIDER` | `sqlite` | `sqlite` \| `postgres` |
+| `SQLITE_PATH` | `./data/ksign.db` | SQLite 경로 |
+| `SEARCH_RESULT_LIMIT` | `20` | 검색 결과 상한 |
+| `LOG_LEVEL` | `info` | 로그 레벨 |
 
-## MCP Tool 사용 예시
+### 공공데이터 수집
 
-### search_sign
+| 변수 | 설명 |
+|------|------|
+| `DATA_GO_KR_SERVICE_KEY` | 공통 키 (단일 키 모드) |
+| `DATA_GO_KR_SERVICE_KEY_DAILY` | 일상생활 수어 |
+| `DATA_GO_KR_SERVICE_KEY_PROFESSIONAL` | 전문용어 수어 |
+| `DATA_GO_KR_SERVICE_KEY_CULTURE` | 문화정보 수어 |
+| `DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE` | 통합 수어정보 |
+| `KCISA_API_IP_FALLBACK` | `api.kcisa.kr` DNS 실패 시 IP (기본 `175.125.91.8`) |
+| `COLLECT_ON_START` | Docker 시작 시 자동 수집 |
+| `COLLECT_PAGE_SIZE` | 페이지 크기 (기본 100) |
+| `COLLECT_REQUEST_DELAY_MS` | 요청 간격 ms (기본 200) |
+| `USE_SAMPLE_DATA` | 키 없을 때 샘플 5건 (데모용) |
 
-```json
-{
-  "keyword": "학교"
-}
+## 공공데이터 수집
+
+### 1. API 키 발급
+
+[문화공공데이터광장](https://www.culture.go.kr/data/openapi/openapiList.do?category=G&searchKeyword=%EC%88%98%EC%96%B4) 또는 [공공데이터포털](https://www.data.go.kr)에서 **API별** 활용신청:
+
+| API | 환경변수 |
+|-----|----------|
+| 일상생활 수어 | `DATA_GO_KR_SERVICE_KEY_DAILY` |
+| 전문용어 수어 | `DATA_GO_KR_SERVICE_KEY_PROFESSIONAL` |
+| 문화정보 수어 | `DATA_GO_KR_SERVICE_KEY_CULTURE` |
+| 통합 수어정보 | `DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE` |
+
+**키가 API마다 다를 때 (권장):**
+
+```env
+DATA_GO_KR_SERVICE_KEY_DAILY=...
+DATA_GO_KR_SERVICE_KEY_PROFESSIONAL=...
+DATA_GO_KR_SERVICE_KEY_CULTURE=...
+DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE=...
 ```
 
-응답:
+개별 키를 하나라도 넣으면 `DATA_GO_KR_SERVICE_KEY`로 나머지가 **자동 대체되지 않습니다.** 키가 있는 API만 수집됩니다.
 
-```json
-{
-  "results": [
-    {
-      "id": "sign-001",
-      "word": "학교",
-      "description": "교육기관을 의미하는 수어",
-      "imageUrl": "https://example.com/signs/school.png",
-      "videoUrl": "https://example.com/signs/school.mp4"
-    }
-  ]
-}
+### 2. 수집 실행
+
+```bash
+npm run db:migrate    # 스키마만
+npm run db:collect    # API 수집 → DB 저장
+npm run db:setup      # migrate + collect
 ```
 
-### get_sign_detail
+504 타임아웃 등 일시 오류는 자동 재시도하며, 실패 시 이미 수집한 페이지는 유지합니다.
 
-```json
-{
-  "signId": "sign-001"
-}
+## PlayMCP in KC 배포
+
+1. GitHub `a4file/k-sign-mcp-server` 연결 후 배포
+2. 환경변수 예시:
+
+```env
+MCP_TRANSPORT=http
+PORT=8000
+DATA_GO_KR_SERVICE_KEY_DAILY=...
+DATA_GO_KR_SERVICE_KEY_PROFESSIONAL=...
+DATA_GO_KR_SERVICE_KEY_CULTURE=...
+DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE=...
+COLLECT_ON_START=true
 ```
 
-응답:
+3. PlayMCP 콘솔에 MCP Endpoint 등록: `https://<서비스명>.playmcp-endpoint.kakaocloud.io/mcp`
 
-```json
-{
-  "id": "sign-001",
-  "word": "학교",
-  "meaning": "교육기관을 의미하는 수어",
-  "category": "일상생활",
-  "handShape": "주먹을 쥔 손",
-  "movement": "손등을 위로 향하게 하여 앞으로 이동",
-  "imageUrl": "https://example.com/signs/school.png",
-  "videoUrl": "https://example.com/signs/school.mp4",
-  "source": "문화체육관광부 일상생활 수어 데이터"
-}
+## Docker
+
+```bash
+docker compose up --build
 ```
+
+- Health: `GET http://localhost:8000/health`
+- MCP: `POST http://localhost:8000/mcp`
 
 ## Claude Desktop 연동
 
@@ -138,23 +172,42 @@ npm start
   "mcpServers": {
     "k-sign": {
       "command": "node",
-      "args": ["/absolute/path/to/K-Sign MCP Server/dist/index.js"],
+      "args": ["/absolute/path/to/k-sign-mcp-server/dist/index.js"],
       "env": {
-        "SQLITE_PATH": "/absolute/path/to/K-Sign MCP Server/data/ksign.db"
+        "SQLITE_PATH": "/absolute/path/to/k-sign-mcp-server/data/ksign.db"
       }
     }
   }
 }
 ```
 
-## Docker
+## MCP Tool 예시
 
-```bash
-docker compose up --build
+### search_sign
+
+```json
+{ "keyword": "안녕하세요" }
 ```
 
-- Health check: `GET http://localhost:3000/health`
-- MCP endpoint: `POST http://localhost:3000/mcp`
+```json
+{
+  "results": [
+    {
+      "id": "ksign-daily-…",
+      "word": "안녕하세요",
+      "description": "인사 표현",
+      "imageUrl": "http://sldict.korean.go.kr/multimedia/…jpg",
+      "videoUrl": "http://sldict.korean.go.kr/multimedia/…mp4"
+    }
+  ]
+}
+```
+
+### get_sign_detail
+
+```json
+{ "signId": "ksign-daily-…" }
+```
 
 ## 테스트
 
@@ -163,71 +216,35 @@ npm test
 npm run test:coverage
 ```
 
-## 공공데이터 수집 (Phase 2)
+## Git 커밋 설정 (a4file 계정)
 
-문화체육관광부/국립국어원 수어 Open API에서 실제 이미지·영상 URL을 수집합니다.
-
-### 1. API 키 발급
-
-[문화공공데이터광장](https://www.culture.go.kr/data/openapi/openapiList.do) 또는 [공공데이터포털](https://www.data.go.kr)에서 API별 활용신청 후 인증키 발급:
-
-| API | 환경변수 |
-|-----|----------|
-| 일상생활 수어 | `DATA_GO_KR_SERVICE_KEY_DAILY` |
-| 전문용어 수어 | `DATA_GO_KR_SERVICE_KEY_PROFESSIONAL` |
-| 문화정보 수어 | `DATA_GO_KR_SERVICE_KEY_CULTURE` |
-| 통합 수어정보 | `DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE` |
-
-키가 API마다 다르면 **각각 따로** 넣으세요. 개별 키를 하나라도 설정하면 공통키(`DATA_GO_KR_SERVICE_KEY`)로 자동 대체되지 않습니다.
-
-### 2. 환경변수 설정
+Vercel/GitHub 연동은 **`a4file` 프로필 하나**만 사용합니다. 커밋이 `a4file-ai`로 잡히지 않도록 저장소 루트에서 한 번 실행하세요:
 
 ```bash
-# API별 키 (권장)
-DATA_GO_KR_SERVICE_KEY_DAILY=일상생활_키
-DATA_GO_KR_SERVICE_KEY_PROFESSIONAL=전문용어_키
-DATA_GO_KR_SERVICE_KEY_CULTURE=문화정보_키
-DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE=통합_키
-
-# 또는 하나의 키로 전부 커버될 때만
-# DATA_GO_KR_SERVICE_KEY=공통키
+./scripts/setup-git.sh
 ```
 
-### 3. 수집 실행
+이 스크립트는:
 
-```bash
-npm run db:migrate   # 스키마 생성
-npm run db:collect   # 공공데이터 수집 + DB 저장
-```
+- 커밋 작성자를 `a4file` GitHub noreply 이메일로 설정 (`116946770+a4file@users.noreply.github.com`)
+- `Co-authored-by: Cursor` / `a4file-ai` 트레일러를 커밋 메시지에서 자동 제거하는 Git hook 활성화
 
-Docker/PlayMCP in KC 배포 시:
+푸시는 `gh auth login`으로 **`a4file` 계정**이 active인지 확인 후 진행하세요.
 
-```bash
-DATA_GO_KR_SERVICE_KEY_DAILY=...
-DATA_GO_KR_SERVICE_KEY_CULTURE=...
-COLLECT_ON_START=true
-```
+## npm 스크립트
 
-컨테이너 시작 시 자동으로 수집됩니다.
-
-| 변수 | 설명 |
-|------|------|
-| `DATA_GO_KR_SERVICE_KEY` | 공통 인증키 (단일 키 모드) |
-| `DATA_GO_KR_SERVICE_KEY_DAILY` | 일상생활 수어 API 키 |
-| `DATA_GO_KR_SERVICE_KEY_PROFESSIONAL` | 전문용어 수어 API 키 |
-| `DATA_GO_KR_SERVICE_KEY_CULTURE` | 문화정보 수어 API 키 |
-| `DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE` | 통합 수어정보 API 키 |
-| `COLLECT_ON_START` | 컨테이너 시작 시 수집 실행 |
-| `COLLECT_PAGE_SIZE` | API 페이지 크기 (기본 100) |
-| `USE_SAMPLE_DATA` | API 키 없을 때 샘플 5건 사용 (로컬 데모용) |
-
----
+| 스크립트 | 설명 |
+|----------|------|
+| `npm run dev` | 개발 서버 (tsx watch) |
+| `npm run build` | TypeScript 빌드 |
+| `npm run db:migrate` | DB 스키마 생성 |
+| `npm run db:collect` | 공공 API 수집 |
+| `npm run db:setup` | migrate + collect |
 
 ## PostgreSQL 전환 (향후)
 
-1. `PostgresSignTermRepository` 구현
-2. `.env`에서 `DB_PROVIDER=postgres`, `POSTGRES_URL` 설정
-3. `RepositoryFactory`가 자동으로 PostgreSQL 구현체 사용
+1. `PostgresSignTermRepository` 구현 완료 상태
+2. `.env`: `DB_PROVIDER=postgres`, `POSTGRES_URL=…`
 
 ## 라이선스
 
