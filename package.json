@@ -21,7 +21,8 @@
     "db:migrate": "tsx src/infrastructure/persistence/sqlite/migrate.ts",
     "db:seed": "tsx src/infrastructure/persistence/sqlite/seed.ts",
     "db:collect": "tsx src/infrastructure/collectors/culture-sign/collect.ts",
-    "db:setup": "npm run db:migrate && npm run db:collect"
+    "db:setup": "npm run db:migrate && npm run db:collect",
+    "db:export-seed": "mkdir -p docker/seed && cp data/ksign.db docker/seed/ksign.db"
   },
   "keywords": [
     "mcp",

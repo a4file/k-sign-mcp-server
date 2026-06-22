@@ -48,6 +48,9 @@ COPY --from=builder /app/src/infrastructure/persistence/sqlite/schema.sql ./dist
 
 RUN mkdir -p /app/data
 
+# Pre-collected public sign data for KC Git deploy (no runtime env vars required).
+COPY docker/seed/ksign.db /app/data/ksign.db
+
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 

@@ -150,12 +150,27 @@ npm run db:setup      # migrate + collect
 | Git 저장소 | https://github.com/a4file/k-sign-mcp-server |
 | Active Endpoint | https://k-sign-mcp-server.playmcp-endpoint.kakaocloud.io/mcp |
 
-1. GitHub 저장소 연결 후 배포
-2. 환경변수 예시:
+### Git 소스 빌드 (환경변수 입력 칸 없음)
+
+KC **Git 소스 빌드** 화면에는 PAT·Git URL만 있고 **런타임 환경변수 입력란이 없습니다.**  
+이 저장소는 **이미 수집된 SQLite DB**(`docker/seed/ksign.db`, 약 3.7만 건)를 Docker 이미지에 포함하므로, KC에서 API 키 없이도 검색이 동작합니다.
+
+1. [PlayMCP 콘솔](https://playmcp.kakao.com/console) → Git 소스 빌드
+2. **Git URL**: `https://github.com/a4file/k-sign-mcp-server` (공개 저장소 → PAT 불필요)
+3. **브랜치**: `main`, **Dockerfile**: `Dockerfile`
+4. 등록 후 빌드·배포 완료되면 Endpoint로 MCP 연결
+
+데이터를 다시 수집해 이미지에 반영하려면 로컬에서:
+
+```bash
+npm run db:setup
+npm run db:export-seed   # data/ksign.db → docker/seed/ksign.db
+git add docker/seed/ksign.db && git commit && git push
+```
+
+KC에서 환경변수를 넣을 수 있는 다른 경로가 생기면, 아래 키로 `COLLECT_ON_START=true` 시 컨테이너 기동 시 재수집도 가능합니다.
 
 ```env
-MCP_TRANSPORT=http
-PORT=8000
 DATA_GO_KR_SERVICE_KEY_DAILY=...
 DATA_GO_KR_SERVICE_KEY_PROFESSIONAL=...
 DATA_GO_KR_SERVICE_KEY_CULTURE=...
@@ -163,7 +178,7 @@ DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE=...
 COLLECT_ON_START=true
 ```
 
-3. [PlayMCP 콘솔](https://playmcp.kakao.com/console)에서 위 Endpoint로 등록
+`.env`는 git에 올리지 마세요.
 
 ## Docker
 
