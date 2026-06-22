@@ -1,0 +1,47 @@
+{
+  "name": "k-sign-mcp-server",
+  "version": "0.1.0",
+  "description": "Korean Sign Language (KSL) MCP Server for AI-powered sign language education",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "main": "dist/index.js",
+  "bin": {
+    "k-sign-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && cp src/infrastructure/persistence/sqlite/schema.sql dist/infrastructure/persistence/sqlite/schema.sql",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit",
+    "db:migrate": "tsx src/infrastructure/persistence/sqlite/migrate.ts",
+    "db:seed": "tsx src/infrastructure/persistence/sqlite/seed.ts"
+  },
+  "keywords": [
+    "mcp",
+    "korean-sign-language",
+    "ksl",
+    "accessibility"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@cfworker/json-schema": "^4.1.1",
+    "@modelcontextprotocol/node": "2.0.0-alpha.2",
+    "@modelcontextprotocol/server": "2.0.0-alpha.2",
+    "better-sqlite3": "^11.9.0",
+    "dotenv": "^16.5.0",
+    "fastify": "^5.3.3",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.15.30",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

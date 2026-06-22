@@ -1,0 +1,27 @@
+services:
+  k-sign-mcp:
+    build: .
+    container_name: k-sign-mcp-server
+    ports:
+      - "${HTTP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      MCP_TRANSPORT: http
+      HTTP_HOST: 0.0.0.0
+      HTTP_PORT: 3000
+      DB_PROVIDER: sqlite
+      SQLITE_PATH: /app/data/ksign.db
+      LOG_LEVEL: info
+      SEARCH_RESULT_LIMIT: 20
+    volumes:
+      - ksign-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  ksign-data:
