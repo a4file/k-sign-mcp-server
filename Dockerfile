@@ -31,6 +31,10 @@ ENV DB_PROVIDER=sqlite
 ENV SQLITE_PATH=/app/data/ksign.db
 ENV LOG_LEVEL=info
 ENV SEARCH_RESULT_LIMIT=20
+ENV COLLECT_ON_START=false
+ENV COLLECT_PAGE_SIZE=100
+ENV COLLECT_REQUEST_DELAY_MS=200
+ENV USE_SAMPLE_DATA=false
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 make g++ \

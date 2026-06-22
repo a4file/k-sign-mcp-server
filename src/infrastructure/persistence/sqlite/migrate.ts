@@ -1,5 +1,4 @@
 import { createSqliteDatabase } from './SqliteDatabase.js';
-import { seedSignTerms } from './seed.js';
 import { env } from '../../../config/env.js';
 
 if (env.DB_PROVIDER !== 'sqlite') {
@@ -8,7 +7,6 @@ if (env.DB_PROVIDER !== 'sqlite') {
 }
 
 const db = createSqliteDatabase(env.SQLITE_PATH);
-const count = seedSignTerms(db);
 db.close();
 
-console.log(`Database ready at ${env.SQLITE_PATH} (${count} sample records)`);
+console.log(`Database schema ready at ${env.SQLITE_PATH}`);

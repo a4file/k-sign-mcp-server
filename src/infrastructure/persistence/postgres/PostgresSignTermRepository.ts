@@ -2,6 +2,7 @@ import type { SignTerm } from '../../../domain/sign/entities/SignTerm.js';
 import type {
   SignSearchOptions,
   SignTermRepository,
+  SignTermUpsertInput,
 } from '../../../domain/sign/repositories/SignTermRepository.js';
 
 /**
@@ -20,6 +21,18 @@ export class PostgresSignTermRepository implements SignTermRepository {
   }
 
   async findById(_id: string): Promise<SignTerm | null> {
+    throw new Error(
+      'PostgreSQL repository is not yet implemented. Set DB_PROVIDER=sqlite or implement PostgresSignTermRepository.',
+    );
+  }
+
+  async upsertMany(_records: SignTermUpsertInput[]): Promise<number> {
+    throw new Error(
+      'PostgreSQL repository is not yet implemented. Set DB_PROVIDER=sqlite or implement PostgresSignTermRepository.',
+    );
+  }
+
+  async count(): Promise<number> {
     throw new Error(
       'PostgreSQL repository is not yet implemented. Set DB_PROVIDER=sqlite or implement PostgresSignTermRepository.',
     );

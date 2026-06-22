@@ -163,6 +163,49 @@ npm test
 npm run test:coverage
 ```
 
+## 공공데이터 수집 (Phase 2)
+
+문화체육관광부/국립국어원 수어 Open API에서 실제 이미지·영상 URL을 수집합니다.
+
+### 1. API 키 발급
+
+[공공데이터포털](https://www.data.go.kr)에서 아래 API 활용신청 후 인증키 발급:
+
+- 문화체육관광부_일상생활 수어
+- 문화체육관광부_전문용어 수어
+- 문화체육관광부_문화정보 수어
+
+### 2. 환경변수 설정
+
+```bash
+DATA_GO_KR_SERVICE_KEY=발급받은_인증키
+```
+
+### 3. 수집 실행
+
+```bash
+npm run db:migrate   # 스키마 생성
+npm run db:collect   # 공공데이터 수집 + DB 저장
+```
+
+Docker/PlayMCP in KC 배포 시:
+
+```bash
+DATA_GO_KR_SERVICE_KEY=발급받은_인증키
+COLLECT_ON_START=true
+```
+
+컨테이너 시작 시 자동으로 수집됩니다.
+
+| 변수 | 설명 |
+|------|------|
+| `DATA_GO_KR_SERVICE_KEY` | 공공데이터포털 인증키 |
+| `COLLECT_ON_START` | 컨테이너 시작 시 수집 실행 |
+| `COLLECT_PAGE_SIZE` | API 페이지 크기 (기본 100) |
+| `USE_SAMPLE_DATA` | API 키 없을 때 샘플 5건 사용 (로컬 데모용) |
+
+---
+
 ## PostgreSQL 전환 (향후)
 
 1. `PostgresSignTermRepository` 구현

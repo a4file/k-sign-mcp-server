@@ -3,6 +3,7 @@ import { SignTerm } from '../../../domain/sign/entities/SignTerm.js';
 import type {
   SignSearchOptions,
   SignTermRepository,
+  SignTermUpsertInput,
 } from '../../../domain/sign/repositories/SignTermRepository.js';
 
 interface SignTermRow {
@@ -89,5 +90,56 @@ export class SqliteSignTermRepository implements SignTermRepository {
       .get(id) as SignTermRow | undefined;
 
     return row ? mapRowToEntity(row) : null;
+  }
+
+  async upsertMany(records: SignTermUpsertInput[]): Promise<number> {
+    if (records.length === 0) {
+      return 0;
+    }
+
+    const insert = this.db.prepare(`
+      INSERT INTO sign_terms (
+        id, word, category, description, hand_shape, movement,
+        image_url, video_url, source, created_at
+      ) VALUES (
+        @id, @word, @category, @description, @handShape, @movement,
+        @imageUrl, @videoUrl, @source, datetime('now')
+      )
+      ON CONFLICT(id) DO UPDATE SET
+        word = excluded.word,
+        category = excluded.category,
+        description = excluded.description,
+        hand_shape = excluded.hand_shape,
+        movement = excluded.movement,
+        image_url = excluded.image_url,
+        video_url = excluded.video_url,
+        source = excluded.source
+    `);
+
+    const insertMany = this.db.transaction((items: SignTermUpsertInput[]) => {
+      for (const item of items) {
+        insert.run({
+          id: item.id,
+          word: item.word,
+          category: item.category,
+          description: item.description,
+          handShape: item.handShape,
+          movement: item.movement,
+          imageUrl: item.imageUrl,
+          videoUrl: item.videoUrl,
+          source: item.source,
+        });
+      }
+    });
+
+    insertMany(records);
+    return records.length;
+  }
+
+  async count(): Promise<number> {
+    const row = this.db.prepare('SELECT COUNT(*) as count FROM sign_terms').get() as {
+      count: number;
+    };
+    return row.count;
   }
 }

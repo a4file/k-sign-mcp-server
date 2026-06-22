@@ -15,6 +15,11 @@ const envSchema = z.object({
   SQLITE_PATH: z.string().default('./data/ksign.db'),
   POSTGRES_URL: z.string().optional(),
   SEARCH_RESULT_LIMIT: z.coerce.number().int().positive().default(20),
+  DATA_GO_KR_SERVICE_KEY: z.string().optional(),
+  COLLECT_ON_START: z.coerce.boolean().default(false),
+  COLLECT_PAGE_SIZE: z.coerce.number().int().positive().default(100),
+  COLLECT_REQUEST_DELAY_MS: z.coerce.number().int().nonnegative().default(200),
+  USE_SAMPLE_DATA: z.coerce.boolean().default(false),
 });
 
 export type Env = z.infer<typeof envSchema>;
