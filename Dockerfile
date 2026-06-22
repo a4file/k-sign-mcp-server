@@ -46,10 +46,11 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/infrastructure/persistence/sqlite/schema.sql ./dist/infrastructure/persistence/sqlite/schema.sql
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data /app/seed
 
-# Pre-collected public sign data for KC Git deploy (no runtime env vars required).
-COPY docker/seed/ksign.db /app/data/ksign.db
+# Pre-collected public sign data (not under /app/data — KC may mount an empty volume there).
+COPY docker/seed/ksign.db /app/seed/ksign.db
+RUN test -s /app/seed/ksign.db
 
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh

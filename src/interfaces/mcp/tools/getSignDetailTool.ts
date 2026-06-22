@@ -3,6 +3,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import type { GetSignDetailUseCase } from '../../../application/sign/GetSignDetailUseCase.js';
 import { SignNotFoundError } from '../../../domain/sign/errors/SignErrors.js';
 import { formatToolError } from './searchSignTool.js';
+import { readOnlyLookupToolAnnotations } from './toolAnnotations.js';
 
 const getSignDetailInputSchema = z.object({
   signId: z.string().min(1, 'signId is required'),
@@ -27,9 +28,11 @@ export function registerGetSignDetailTool(
   server.registerTool(
     'get_sign_detail',
     {
+      title: '수어 상세 조회',
       description: '특정 수어의 상세 정보를 반환합니다.',
       inputSchema: getSignDetailInputSchema,
       outputSchema: getSignDetailOutputSchema,
+      annotations: readOnlyLookupToolAnnotations,
     },
     async ({ signId }) => {
       try {

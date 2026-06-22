@@ -6,6 +6,7 @@ import {
   InvalidSearchKeywordError,
   SignNotFoundError,
 } from '../../../domain/sign/errors/SignErrors.js';
+import { readOnlyLookupToolAnnotations } from './toolAnnotations.js';
 
 const searchSignInputSchema = z.object({
   keyword: z.string().min(1, 'keyword is required'),
@@ -30,9 +31,11 @@ export function registerSearchSignTool(
   server.registerTool(
     'search_sign',
     {
+      title: '수어 검색',
       description: '사용자가 입력한 한국어 단어에 해당하는 수어 정보를 검색합니다.',
       inputSchema: searchSignInputSchema,
       outputSchema: searchSignOutputSchema,
+      annotations: readOnlyLookupToolAnnotations,
     },
     async ({ keyword }) => {
       try {

@@ -4,5 +4,7 @@ coverage
 .git
 .env
 *.db
+!docker/seed/
+!docker/seed/ksign.db
 *.db-*
 .DS_Store
