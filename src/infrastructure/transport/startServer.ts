@@ -40,6 +40,14 @@ export async function startHttpTransport(
     logger: container.env.LOG_LEVEL === 'debug',
   });
 
+  fastify.get('/', async () => ({
+    status: 'ok',
+    service: container.env.MCP_SERVER_NAME,
+    version: container.env.MCP_SERVER_VERSION,
+    mcp: '/mcp',
+    health: '/health',
+  }));
+
   fastify.get('/health', async () => ({
     status: 'ok',
     service: container.env.MCP_SERVER_NAME,

@@ -10,7 +10,7 @@ const envSchema = z.object({
   MCP_SERVER_NAME: z.string().default('k-sign-mcp-server'),
   MCP_SERVER_VERSION: z.string().default('0.1.0'),
   HTTP_HOST: z.string().default('0.0.0.0'),
-  HTTP_PORT: z.coerce.number().int().positive().default(3000),
+  HTTP_PORT: z.coerce.number().int().positive().default(8000),
   DB_PROVIDER: z.enum(['sqlite', 'postgres']).default('sqlite'),
   SQLITE_PATH: z.string().default('./data/ksign.db'),
   POSTGRES_URL: z.string().optional(),
@@ -20,7 +20,13 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 function parseEnv(): Env {
-  const result = envSchema.safeParse(process.env);
+  // Kubernetes / PlayMCP in KC injects PORT; honor it over HTTP_PORT
+  const mergedEnv = {
+    ...process.env,
+    HTTP_PORT: process.env.PORT ?? process.env.HTTP_PORT,
+  };
+
+  const result = envSchema.safeParse(mergedEnv);
   if (!result.success) {
     const formatted = result.error.issues
       .map((issue) => `${issue.path.join('.')}: ${issue.message}`)

@@ -25,7 +25,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV MCP_TRANSPORT=http
 ENV HTTP_HOST=0.0.0.0
-ENV HTTP_PORT=3000
+ENV HTTP_PORT=8000
+ENV PORT=8000
 ENV DB_PROVIDER=sqlite
 ENV SQLITE_PATH=/app/data/ksign.db
 ENV LOG_LEVEL=info
@@ -46,7 +47,7 @@ RUN mkdir -p /app/data
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-EXPOSE 3000
+EXPOSE 8000
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "dist/index.js"]
