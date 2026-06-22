@@ -1,4 +1,5 @@
 import { XMLParser } from 'fast-xml-parser';
+import { kcisaFetch } from './kcisaFetch.js';
 import type {
   CultureSignApiItem,
   CultureSignApiPage,
@@ -22,8 +23,32 @@ function toNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+const RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+const MAX_PAGE_RETRIES = 5;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientFetchError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const code = (error as NodeJS.ErrnoException).code;
+  const causeCode = (error.cause as NodeJS.ErrnoException | undefined)?.code;
+  return (
+    code === 'ETIMEDOUT' ||
+    code === 'ECONNRESET' ||
+    code === 'ECONNREFUSED' ||
+    code === 'EAI_AGAIN' ||
+    causeCode === 'ETIMEDOUT' ||
+    causeCode === 'ECONNRESET'
+  );
+}
+
 export class CultureSignApiClient {
-  constructor(private readonly fetchImpl: typeof fetch = fetch) {}
+  constructor(private readonly fetchImpl: typeof fetch = kcisaFetch) {}
 
   async fetchPage(
     dataset: CultureSignDataset,
@@ -35,21 +60,76 @@ export class CultureSignApiClient {
     url.searchParams.set('serviceKey', serviceKey);
     url.searchParams.set('numOfRows', String(numOfRows));
     url.searchParams.set('pageNo', String(pageNo));
+    // KCISA requires keyword= even when empty (see culture.go.kr API guide).
+    url.searchParams.set('keyword', '');
 
-    const response = await this.fetchImpl(url, {
+    if (dataset.extraQueryParams) {
+      for (const [key, value] of Object.entries(dataset.extraQueryParams)) {
+        url.searchParams.set(key, value);
+      }
+    }
+
+    const requestInit: RequestInit = {
       headers: {
         Accept: 'application/xml, application/json, text/xml, */*',
       },
-    });
+    };
 
-    if (!response.ok) {
-      throw new Error(
-        `Culture sign API request failed (${dataset.code}, page ${pageNo}): HTTP ${response.status}`,
-      );
+    let lastError: Error | undefined;
+
+    for (let attempt = 1; attempt <= MAX_PAGE_RETRIES; attempt++) {
+      try {
+        const response = await this.fetchImpl(url, requestInit);
+        const body = await response.text();
+
+        if (!response.ok) {
+          const error = new Error(
+            this.formatHttpError(dataset.code, pageNo, response.status, body),
+          );
+
+          if (RETRYABLE_HTTP_STATUSES.has(response.status) && attempt < MAX_PAGE_RETRIES) {
+            lastError = error;
+            await sleep(500 * attempt);
+            continue;
+          }
+
+          throw error;
+        }
+
+        return this.parseResponse(body, pageNo, numOfRows);
+      } catch (error) {
+        if (isTransientFetchError(error) && attempt < MAX_PAGE_RETRIES) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          await sleep(500 * attempt);
+          continue;
+        }
+
+        throw error;
+      }
     }
 
-    const body = await response.text();
-    return this.parseResponse(body, pageNo, numOfRows);
+    throw lastError ?? new Error(`Culture sign API request failed (${dataset.code}, page ${pageNo})`);
+  }
+
+  private formatHttpError(
+    datasetCode: string,
+    pageNo: number,
+    status: number,
+    body: string,
+  ): string {
+    const trimmed = body.trim();
+    if (trimmed.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(trimmed) as { message?: string };
+        if (parsed.message) {
+          return `Culture sign API request failed (${datasetCode}, page ${pageNo}): ${parsed.message}`;
+        }
+      } catch {
+        // fall through to generic message
+      }
+    }
+
+    return `Culture sign API request failed (${datasetCode}, page ${pageNo}): HTTP ${status}`;
   }
 
   parseResponse(body: string, pageNo: number, numOfRows: number): CultureSignApiPage {

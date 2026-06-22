@@ -169,16 +169,28 @@ npm run test:coverage
 
 ### 1. API 키 발급
 
-[공공데이터포털](https://www.data.go.kr)에서 아래 API 활용신청 후 인증키 발급:
+[문화공공데이터광장](https://www.culture.go.kr/data/openapi/openapiList.do) 또는 [공공데이터포털](https://www.data.go.kr)에서 API별 활용신청 후 인증키 발급:
 
-- 문화체육관광부_일상생활 수어
-- 문화체육관광부_전문용어 수어
-- 문화체육관광부_문화정보 수어
+| API | 환경변수 |
+|-----|----------|
+| 일상생활 수어 | `DATA_GO_KR_SERVICE_KEY_DAILY` |
+| 전문용어 수어 | `DATA_GO_KR_SERVICE_KEY_PROFESSIONAL` |
+| 문화정보 수어 | `DATA_GO_KR_SERVICE_KEY_CULTURE` |
+| 통합 수어정보 | `DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE` |
+
+키가 API마다 다르면 **각각 따로** 넣으세요. 개별 키를 하나라도 설정하면 공통키(`DATA_GO_KR_SERVICE_KEY`)로 자동 대체되지 않습니다.
 
 ### 2. 환경변수 설정
 
 ```bash
-DATA_GO_KR_SERVICE_KEY=발급받은_인증키
+# API별 키 (권장)
+DATA_GO_KR_SERVICE_KEY_DAILY=일상생활_키
+DATA_GO_KR_SERVICE_KEY_PROFESSIONAL=전문용어_키
+DATA_GO_KR_SERVICE_KEY_CULTURE=문화정보_키
+DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE=통합_키
+
+# 또는 하나의 키로 전부 커버될 때만
+# DATA_GO_KR_SERVICE_KEY=공통키
 ```
 
 ### 3. 수집 실행
@@ -191,7 +203,8 @@ npm run db:collect   # 공공데이터 수집 + DB 저장
 Docker/PlayMCP in KC 배포 시:
 
 ```bash
-DATA_GO_KR_SERVICE_KEY=발급받은_인증키
+DATA_GO_KR_SERVICE_KEY_DAILY=...
+DATA_GO_KR_SERVICE_KEY_CULTURE=...
 COLLECT_ON_START=true
 ```
 
@@ -199,7 +212,11 @@ COLLECT_ON_START=true
 
 | 변수 | 설명 |
 |------|------|
-| `DATA_GO_KR_SERVICE_KEY` | 공공데이터포털 인증키 |
+| `DATA_GO_KR_SERVICE_KEY` | 공통 인증키 (단일 키 모드) |
+| `DATA_GO_KR_SERVICE_KEY_DAILY` | 일상생활 수어 API 키 |
+| `DATA_GO_KR_SERVICE_KEY_PROFESSIONAL` | 전문용어 수어 API 키 |
+| `DATA_GO_KR_SERVICE_KEY_CULTURE` | 문화정보 수어 API 키 |
+| `DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE` | 통합 수어정보 API 키 |
 | `COLLECT_ON_START` | 컨테이너 시작 시 수집 실행 |
 | `COLLECT_PAGE_SIZE` | API 페이지 크기 (기본 100) |
 | `USE_SAMPLE_DATA` | API 키 없을 때 샘플 5건 사용 (로컬 데모용) |

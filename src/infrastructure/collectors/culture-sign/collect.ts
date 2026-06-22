@@ -1,18 +1,22 @@
+import { pathToFileURL } from 'node:url';
 import { createSqliteDatabase } from '../../persistence/sqlite/SqliteDatabase.js';
 import { SqliteSignTermRepository } from '../../persistence/sqlite/SqliteSignTermRepository.js';
 import { seedSignTerms } from '../../persistence/sqlite/seed.js';
 import { env } from '../../../config/env.js';
 import { collectCultureSignRecords } from './collectCultureSignData.js';
+import { hasAnyServiceKey, resolveDatasetServiceKeys } from './serviceKeys.js';
 
 export async function runSignDataCollection(): Promise<void> {
   const db = createSqliteDatabase(env.SQLITE_PATH);
   const repository = new SqliteSignTermRepository(db);
 
   try {
-    if (env.DATA_GO_KR_SERVICE_KEY) {
+    if (hasAnyServiceKey(env)) {
+      const serviceKeys = resolveDatasetServiceKeys(env);
       console.log('Collecting sign language data from public APIs...');
+      db.exec('DELETE FROM sign_terms');
       const { records, summary } = await collectCultureSignRecords({
-        serviceKey: env.DATA_GO_KR_SERVICE_KEY,
+        serviceKeys,
         pageSize: env.COLLECT_PAGE_SIZE,
         requestDelayMs: env.COLLECT_REQUEST_DELAY_MS,
       });
@@ -44,14 +48,18 @@ export async function runSignDataCollection(): Promise<void> {
     }
 
     throw new Error(
-      'DATA_GO_KR_SERVICE_KEY is not set. Apply for the culture sign APIs on https://www.data.go.kr and set the service key, or set USE_SAMPLE_DATA=true for local demo data.',
+      'No API keys configured. Set DATA_GO_KR_SERVICE_KEY or per-dataset keys (DATA_GO_KR_SERVICE_KEY_DAILY, _PROFESSIONAL, _CULTURE, _COMPREHENSIVE), or set USE_SAMPLE_DATA=true for local demo data.',
     );
   } finally {
     db.close();
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isMainModule =
+  Boolean(process.argv[1]) &&
+  import.meta.url === pathToFileURL(process.argv[1]!).href;
+
+if (isMainModule) {
   runSignDataCollection().catch((error) => {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);

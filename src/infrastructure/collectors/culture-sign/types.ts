@@ -1,32 +1,43 @@
+export type SignDatasetCode = 'daily' | 'professional' | 'culture' | 'comprehensive';
+
 export interface CultureSignDataset {
-  code: 'daily' | 'professional' | 'culture';
+  code: SignDatasetCode;
   name: string;
   endpoint: string;
   splitTitles: boolean;
   cleanProfessionalTitle: boolean;
+  extraQueryParams?: Record<string, string>;
 }
 
 export const CULTURE_SIGN_DATASETS: CultureSignDataset[] = [
   {
     code: 'daily',
-    name: '문화체육관광부 일상생활 수어',
-    endpoint: 'https://api.kcisa.kr/openapi/service/rest/meta13/getCTE01701',
+    name: '국립국어원 일상생활 수어',
+    endpoint: 'http://api.kcisa.kr/openapi/service/rest/meta13/getCTE01701',
     splitTitles: true,
     cleanProfessionalTitle: false,
   },
   {
     code: 'professional',
-    name: '문화체육관광부 전문용어 수어',
-    endpoint: 'https://api.kcisa.kr/openapi/service/rest/meta13/getCTE01702',
+    name: '국립국어원 전문용어 수어',
+    endpoint: 'http://api.kcisa.kr/openapi/service/rest/meta13/getCTE01702',
     splitTitles: true,
     cleanProfessionalTitle: true,
   },
   {
     code: 'culture',
-    name: '문화체육관광부 문화정보 수어',
-    endpoint: 'https://api.kcisa.kr/openapi/service/rest/meta13/getCTE01703',
+    name: '국립국어원 문화정보 수어',
+    endpoint: 'http://api.kcisa.kr/openapi/service/rest/meta13/getCTE01703',
     splitTitles: false,
     cleanProfessionalTitle: false,
+  },
+  {
+    code: 'comprehensive',
+    name: '국립국어원 통합 수어정보',
+    endpoint: 'http://api.kcisa.kr/API_CNV_054/request',
+    splitTitles: true,
+    cleanProfessionalTitle: false,
+    extraQueryParams: { collectionDb: '' },
   },
 ];
 
@@ -36,6 +47,8 @@ export interface CultureSignApiItem {
   description?: string;
   subjectCategory?: string;
   subjectKeyword?: string;
+  categoryType?: string;
+  collectionDb?: string;
   url?: string;
   subDescription?: string;
   signDescription?: string;
@@ -51,7 +64,7 @@ export interface CultureSignApiPage {
 }
 
 export interface CollectSignDataOptions {
-  serviceKey: string;
+  serviceKeys: Partial<Record<SignDatasetCode, string>>;
   pageSize?: number;
   requestDelayMs?: number;
   datasets?: CultureSignDataset[];

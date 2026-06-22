@@ -28,13 +28,42 @@ export async function collectCultureSignRecords(
   };
 
   for (const dataset of datasets) {
-    const datasetSummary = await collectDataset(
-      client,
-      dataset,
-      options.serviceKey,
-      pageSize,
-      requestDelayMs,
-    );
+    const serviceKey = options.serviceKeys[dataset.code];
+    if (!serviceKey) {
+      console.warn(
+        `Skipping ${dataset.name}: no API key configured (set DATA_GO_KR_SERVICE_KEY_${dataset.code.toUpperCase()} or DATA_GO_KR_SERVICE_KEY)`,
+      );
+      summary.datasets.push({
+        code: dataset.code,
+        name: dataset.name,
+        pages: 0,
+        rawItems: 0,
+        records: 0,
+      });
+      continue;
+    }
+
+    let datasetSummary: Awaited<ReturnType<typeof collectDataset>>;
+    try {
+      datasetSummary = await collectDataset(
+        client,
+        dataset,
+        serviceKey,
+        pageSize,
+        requestDelayMs,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`Skipping ${dataset.name}: ${message}`);
+      summary.datasets.push({
+        code: dataset.code,
+        name: dataset.name,
+        pages: 0,
+        rawItems: 0,
+        records: 0,
+      });
+      continue;
+    }
 
     for (const record of datasetSummary.records) {
       const dedupeKey = `${record.id}`;
@@ -72,20 +101,31 @@ async function collectDataset(
   let totalCount = Number.POSITIVE_INFINITY;
 
   while ((pageNo - 1) * pageSize < totalCount) {
-    const page = await client.fetchPage(dataset, serviceKey, pageNo, pageSize);
-    pages += 1;
-    rawItems += page.items.length;
-    totalCount = page.totalCount;
+    try {
+      const page = await client.fetchPage(dataset, serviceKey, pageNo, pageSize);
+      pages += 1;
+      rawItems += page.items.length;
+      totalCount = page.totalCount;
 
-    records.push(...mapCultureSignItems(page.items, dataset));
+      records.push(...mapCultureSignItems(page.items, dataset));
 
-    if (page.items.length === 0) {
-      break;
-    }
+      if (page.items.length === 0) {
+        break;
+      }
 
-    pageNo += 1;
-    if (requestDelayMs > 0) {
-      await sleep(requestDelayMs);
+      pageNo += 1;
+      if (requestDelayMs > 0) {
+        await sleep(requestDelayMs);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (records.length > 0) {
+        console.warn(
+          `Partial collection for ${dataset.name}: stopped at page ${pageNo} (${records.length} records): ${message}`,
+        );
+        break;
+      }
+      throw error;
     }
   }
 

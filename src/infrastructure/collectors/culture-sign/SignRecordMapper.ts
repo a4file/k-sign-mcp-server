@@ -33,7 +33,9 @@ function pickImageUrl(item: CultureSignApiItem): string | null {
     .map((part) => part.trim())
     .find(Boolean);
 
-  return normalizeMediaUrl(signImage ?? item.url);
+  return normalizeMediaUrl(
+    signImage ?? item.referenceIdentifier ?? item.url,
+  );
 }
 
 function pickVideoUrl(item: CultureSignApiItem): string | null {
@@ -57,7 +59,7 @@ function expandTitles(item: CultureSignApiItem, dataset: CultureSignDataset): st
 
   const titles = dataset.splitTitles
     ? rawTitle.split(',').map((part) => part.trim()).filter(Boolean)
-    : [rawTitle.replace(/\s+/g, '')];
+    : [rawTitle.trim()];
 
   if (!dataset.cleanProfessionalTitle) {
     return titles;
@@ -70,12 +72,11 @@ function expandTitles(item: CultureSignApiItem, dataset: CultureSignDataset): st
 
 function buildRecordId(dataset: CultureSignDataset, item: CultureSignApiItem, word: string): string {
   const reference = item.referenceIdentifier?.trim();
-  if (reference) {
-    return `ksign-${dataset.code}-${reference}`;
-  }
-
-  const hash = createHash('sha1').update(`${dataset.code}:${word}:${item.subDescription ?? ''}`).digest('hex');
-  return `ksign-${dataset.code}-${hash.slice(0, 12)}`;
+  const basis = reference
+    ? `${reference}:${word}`
+    : `${dataset.code}:${word}:${item.subDescription ?? ''}:${item.signImages ?? ''}`;
+  const hash = createHash('sha1').update(basis).digest('hex');
+  return `ksign-${dataset.code}-${hash.slice(0, 16)}`;
 }
 
 export function mapCultureSignItem(
@@ -91,7 +92,12 @@ export function mapCultureSignItem(
   const videoUrl = pickVideoUrl(item);
   const description = item.description?.trim() || item.signDescription?.trim() || null;
   const handShape = item.signDescription?.trim() || null;
-  const category = item.subjectCategory?.trim() || item.subjectKeyword?.trim() || null;
+  const category =
+    item.categoryType?.trim() ||
+    item.collectionDb?.trim() ||
+    item.subjectCategory?.trim() ||
+    item.subjectKeyword?.trim() ||
+    null;
 
   return words.map((word) => ({
     id: buildRecordId(dataset, item, word),
