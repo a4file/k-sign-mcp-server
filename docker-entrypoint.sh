@@ -9,9 +9,12 @@ if [ "$DB_PROVIDER" = "sqlite" ]; then
     || [ -n "$DATA_GO_KR_SERVICE_KEY_PROFESSIONAL" ] \
     || [ -n "$DATA_GO_KR_SERVICE_KEY_CULTURE" ] \
     || [ -n "$DATA_GO_KR_SERVICE_KEY_COMPREHENSIVE" ] \
-    || [ "$COLLECT_ON_START" = "true" ] \
     || [ "$USE_SAMPLE_DATA" = "true" ]; then
-    node dist/infrastructure/collectors/culture-sign/collect.js
+    if [ "$COLLECT_ON_START" = "true" ] || [ "$USE_SAMPLE_DATA" = "true" ]; then
+      node dist/infrastructure/collectors/culture-sign/collect.js || {
+        echo "Warning: sign data collection failed; starting with existing database." >&2
+      }
+    fi
   fi
 fi
 

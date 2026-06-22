@@ -50,23 +50,37 @@ export class SqliteSignTermRepository implements SignTermRepository {
       .map((token) => `"${token.replace(/"/g, '""')}"*`)
       .join(' ');
 
-    const rows = this.db
-      .prepare(
-        `
+    try {
+      const rows = this.db
+        .prepare(
+          `
         SELECT ${FTS_SELECT_COLUMNS}
         FROM sign_terms_fts fts
         JOIN sign_terms s ON s.rowid = fts.rowid
         WHERE sign_terms_fts MATCH ?
-        ORDER BY rank
+        ORDER BY
+          CASE
+            WHEN s.word = ? THEN 0
+            WHEN s.word LIKE ? THEN 1
+            ELSE 2
+          END,
+          rank
         LIMIT ?
       `,
-      )
-      .all(ftsQuery, options.limit) as SignTermRow[];
+        )
+        .all(ftsQuery, keyword, `${keyword}%`, options.limit) as SignTermRow[];
 
-    if (rows.length > 0) {
-      return rows.map(mapRowToEntity);
+      if (rows.length > 0) {
+        return rows.map(mapRowToEntity);
+      }
+    } catch {
+      this.rebuildFtsIndex();
     }
 
+    return this.searchByWordFallback(keyword, options.limit);
+  }
+
+  private searchByWordFallback(keyword: string, limit: number): SignTerm[] {
     const likePattern = `%${keyword}%`;
     const fallbackRows = this.db
       .prepare(
@@ -74,12 +88,15 @@ export class SqliteSignTermRepository implements SignTermRepository {
         SELECT id, word, category, description, hand_shape, movement,
                image_url, video_url, source, created_at
         FROM sign_terms
-        WHERE word LIKE ? OR description LIKE ?
-        ORDER BY word ASC
+        WHERE word LIKE ? OR word = ?
+        ORDER BY
+          CASE WHEN word = ? THEN 0 WHEN word LIKE ? THEN 1 ELSE 2 END,
+          length(word) ASC,
+          word ASC
         LIMIT ?
       `,
       )
-      .all(likePattern, likePattern, options.limit) as SignTermRow[];
+      .all(likePattern, keyword, keyword, `${keyword}%`, limit) as SignTermRow[];
 
     return fallbackRows.map(mapRowToEntity);
   }
@@ -116,7 +133,8 @@ export class SqliteSignTermRepository implements SignTermRepository {
         source = excluded.source
     `);
 
-    const insertMany = this.db.transaction((items: SignTermUpsertInput[]) => {
+    const replaceAll = this.db.transaction((items: SignTermUpsertInput[]) => {
+      this.db.exec('DELETE FROM sign_terms');
       for (const item of items) {
         insert.run({
           id: item.id,
@@ -132,8 +150,13 @@ export class SqliteSignTermRepository implements SignTermRepository {
       }
     });
 
-    insertMany(records);
+    replaceAll(records);
+    this.rebuildFtsIndex();
     return records.length;
+  }
+
+  rebuildFtsIndex(): void {
+    this.db.exec("INSERT INTO sign_terms_fts(sign_terms_fts) VALUES('rebuild')");
   }
 
   async count(): Promise<number> {

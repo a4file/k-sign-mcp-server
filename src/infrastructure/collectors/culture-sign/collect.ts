@@ -14,7 +14,6 @@ export async function runSignDataCollection(): Promise<void> {
     if (hasAnyServiceKey(env)) {
       const serviceKeys = resolveDatasetServiceKeys(env);
       console.log('Collecting sign language data from public APIs...');
-      db.exec('DELETE FROM sign_terms');
       const { records, summary } = await collectCultureSignRecords({
         serviceKeys,
         pageSize: env.COLLECT_PAGE_SIZE,

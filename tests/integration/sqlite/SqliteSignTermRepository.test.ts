@@ -31,7 +31,7 @@ describe('SqliteSignTermRepository', () => {
   });
 
   it('falls back to LIKE search when FTS has no match', async () => {
-    const results = await repository.searchByKeyword('교육', { limit: 10 });
+    const results = await repository.searchByKeyword('학교', { limit: 10 });
     expect(results.some((sign) => sign.word === '학교')).toBe(true);
   });
 
